@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CENTRO DE CAPACITACIÓN - Maniagro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; border: 3px solid #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .animate-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const { 
+            Settings, ShieldCheck, CheckCircle2, AlertTriangle, 
+            Apple, ClipboardList, GraduationCap, User, 
+            ArrowRight, ChevronLeft, Volume2, XCircle, 
+            RefreshCw, Download, BarChart3, FileDown, 
+            QrCode, Link, Printer, Database 
+        } = lucide;
+
+        // --- CONFIGURACIÓN DE FIREBASE ---
+        // Si vas a usar tu propia base de datos, reemplaza este objeto con tus datos de Firebase Console
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            projectId: "TU_PROYECTO",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "TU_ID",
+            appId: "TU_APP_ID"
+        };
+
+        // --- DATOS DEL CURSO ---
+        const COURSE_DATA = [
+            {
+                id: 1,
+                title: "Conceptos Generales",
+                icon: "Settings",
+                summary: "Diferenciación entre alimentos genuinos, alterados, adulterados, falsificados y contaminados. Cadena agroalimentaria y normativa del Código Alimentario Argentino (CAA).",
+                questions: [
+                    { q: "¿Qué define a un alimento ADULTERADO?", options: ["Deterioro natural por tiempo", "Privación de elementos útiles o adición de sustancias no autorizadas", "Presencia accidental de bacterias", "Uso de una marca legítima con permiso"], correct: 1, rationale: "La adulteración implica un fraude deliberado para ocultar defectos o reducir costos." },
+                    { q: "¿Qué es un alimento ALTERADO?", options: ["Aquel con químicos prohibidos", "El que sufre deterioro organoléptico por causas naturales o mal manejo", "Un producto con etiqueta falsa", "Alimento con bacterias de cólera"], correct: 1, rationale: "Es el deterioro 'natural' o accidental del producto (ej: galletitas rancias)." },
+                    { q: "¿Cuál es el rol del manipulador según el CAA?", options: ["Solo cocinar", "Toda persona que toque alimentos, utensilios o superficies de contacto", "Solo los supervisores de turno", "Quien transporta mercadería cerrada únicamente"], correct: 1, rationale: "Cualquier contacto directo o indirecto define al manipulador de alimentos." },
+                    { q: "¿Qué significa 'Alimento Falsificado'?", options: ["Comida sintética", "Producto con marca legítima que no procede de su verdadero fabricante", "Alimento con mucha sal", "Comida sin fecha de vencimiento"], correct: 1, rationale: "Es un engaño sobre la identidad, marca u origen del producto." },
+                    { q: "La cadena agroalimentaria se define como:", options: ["De la fábrica al súper", "Del campo a la mesa", "Del puerto al camión", "Solo producción hortícola"], correct: 1, rationale: "Incluye todas las etapas de valor desde el origen hasta el consumo final." }
+                ]
+            },
+            {
+                id: 2,
+                title: "Alimentos Seguros",
+                icon: "ShieldCheck",
+                summary: "Inocuidad, peligros físicos, químicos y biológicos. Rango de temperaturas críticas y control del desarrollo bacteriano.",
+                questions: [
+                    { q: "¿Cuál es el rango de la 'Zona de Peligro' de temperatura?", options: ["0°C a 10°C", "5°C a 65°C", "70°C a 100°C", "-18°C a 0°C"], correct: 1, rationale: "Es el rango donde las bacterias patógenas se multiplican exponencialmente." },
+                    { q: "Las bacterias pueden reproducirse cada:", options: ["1 hora", "20 minutos", "5 minutos", "24 horas"], correct: 1, rationale: "En condiciones óptimas de calor y humedad, su crecimiento es extremadamente veloz." },
+                    { q: "¿Qué es un peligro biológico en los alimentos?", options: ["Un tornillo", "Residuos de detergente", "Microorganismos como virus, bacterias o parásitos", "Un vidrio roto"], correct: 2, rationale: "Son agentes vivos capaces de causar infecciones o intoxicaciones." },
+                    { q: "Los alimentos de ALTO RIESGO se caracterizan por:", options: ["Tener poca proteína", "Tener poca agua", "Alta proporción de agua y alto contenido proteico", "Mucha acidez"], correct: 2, rationale: "Ej: carnes, lácteos y huevos son medios ideales para las bacterias." },
+                    { q: "¿Qué pH prefieren la mayoría de los microorganismos patógenos?", options: ["Muy ácido (pH 2)", "Casi neutro (entre 5 y 8)", "Muy alcalino (pH 13)", "Cualquier pH"], correct: 1, rationale: "La neutralidad favorece el desarrollo de la gran mayoría de bacterias peligrosas." }
+                ]
+            },
+            {
+                id: 3,
+                title: "Claves de Inocuidad",
+                icon: "CheckCircle2",
+                summary: "Higiene personal, lavado de manos profesional, prevención de contaminación cruzada y regla PEPS.",
+                questions: [
+                    { q: "¿Cuánto tiempo debe durar el frotado de manos correcto?", options: ["5 segundos", "15 a 20 segundos", "1 minuto", "Solo enjuague con agua"], correct: 1, rationale: "El frotado mecánico hasta los codos es esencial para eliminar microbios." },
+                    { q: "¿Qué es la contaminación cruzada indirecta?", options: ["Tocar carne cruda con cocida", "Pasar microbios a través de un vehículo (tablas, manos, cuchillos)", "Cerrar mal un envase", "Usar agua potable"], correct: 1, rationale: "Ocurre cuando un utensilio contaminado toca un alimento listo para consumir." },
+                    { q: "¿Qué indica la regla PEPS?", options: ["Poca Entrada Poco Stock", "Primero Entra, Primero Sale", "Prioridad En Productos Suaves", "Para El Próximo Servicio"], correct: 1, rationale: "Garantiza la rotación de stock para evitar productos vencidos." },
+                    { q: "¿Cómo se debe descongelar correctamente un alimento?", options: ["A temperatura ambiente", "En la heladera con anticipación", "En agua caliente", "Expuesto al sol"], correct: 1, rationale: "Evita que la superficie del alimento entre en la zona de peligro." },
+                    { q: "¿Dónde deben ubicarse las carnes crudas en la heladera?", options: ["Estante superior", "En la puerta", "En la parte inferior", "Junto a los lácteos"], correct: 2, rationale: "Se colocan abajo para evitar goteos de jugos sobre otros alimentos." }
+                ]
+            },
+            {
+                id: 4,
+                title: "Enfermedades (ETAs)",
+                icon: "AlertTriangle",
+                summary: "Salmonelosis, SUH, Botulismo y Hepatitis A. Identificación de grupos de riesgo y reservorios.",
+                questions: [
+                    { q: "El Síndrome Urémico Hemolítico (SUH) se asocia a:", options: ["Consumo de huevos", "Carnes picadas mal cocidas", "Pescado fresco", "Agua destilada"], correct: 1, rationale: "La bacteria E. coli O157:H7 suele estar en el centro de hamburguesas mal cocidas." },
+                    { q: "¿Qué causa el BOTULISMO?", options: ["Toxina de C. botulinum en conservas mal procesadas", "Parásitos del cerdo", "Agua con cloro", "Lavar mal la lechuga"], correct: 0, rationale: "Es una neurotoxina muy peligrosa producida en ausencia de oxígeno." },
+                    { q: "¿Cómo se previene la TRIQUINOSIS?", options: ["Usar alcohol en gel", "Análisis de entraña por veterinario y cocción completa", "Congelar por 2 horas", "Lavar la carne con vinagre"], correct: 1, rationale: "Se requiere inspección oficial del animal y asegurar cocción al centro." },
+                    { q: "La Salmonelosis se vincula principalmente a:", options: ["Frutas secas", "Aves y huevos crudos o mal cocidos", "Arroz hervido", "Panificados"], correct: 1, rationale: "El tracto intestinal de las aves es el reservorio común de esta bacteria." },
+                    { q: "¿Cuáles son los grupos más vulnerables a las ETA?", options: ["Adultos jóvenes", "Deportistas", "Niños, ancianos y embarazadas", "Personal de limpieza"], correct: 2, rationale: "Tienen un sistema inmunológico menos resistente a las infecciones." }
+                ]
+            },
+            {
+                id: 5,
+                title: "Libre de Gluten",
+                icon: "AlertTriangle",
+                summary: "Manipulación para celíacos (Sin TACC). Prevención de trazas y normativa oficial argentina.",
+                questions: [
+                    { q: "¿Qué significa la sigla T.A.C.C.?", options: ["Trigo, Arroz, Centeno, Cebada", "Trigo, Avena, Cebada, Centeno", "Todos Alimentos Calidad Control", "Trigo, Avena, Comino, Canela"], correct: 1, rationale: "Son los cuatro cereales cuyas proteínas afectan a los celíacos." },
+                    { q: "Límite legal para ser 'Libre de Gluten' en Argentina:", options: ["50 mg/kg", "10 mg/kg", "100 mg/kg", "0.1 mg/kg"], correct: 1, rationale: "La normativa establece 10 mg/kg como el umbral máximo de seguridad." },
+                    { q: "¿Cómo sanitizar superficies para Sin TACC?", options: ["Solo agua", "Alcohol al 70% pasando en una sola dirección con papel", "Detergente común", "Paño húmedo"], correct: 1, rationale: "El alcohol y la dirección única aseguran el arrastre de fragmentos." },
+                    { q: "¿Es seguro usar el aceite donde se frieron alimentos con harina?", options: ["Sí, si se filtra", "No, existe contaminación cruzada por trazas", "Solo si está muy caliente", "Sí, solo para papas"], correct: 1, rationale: "El aceite retiene micropartículas de gluten que afectan al celíaco." },
+                    { q: "Uso del horno compartido para Sin TACC:", options: ["No se puede usar", "Cocinar al mismo tiempo", "Limpiar bien y cubrir la placa Sin TACC arriba", "Cocinar abajo de la comida común"], correct: 2, rationale: "Se debe cubrir y colocar arriba para evitar caída de migas de otros estantes." }
+                ]
+            },
+            {
+                id: 6,
+                title: "Nutrición y GAPA",
+                icon: "Apple",
+                summary: "Guías Alimentarias (GAPA). Nutrientes esenciales, hidratación y reducción de sodio.",
+                questions: [
+                    { q: "¿Cuántas porciones de fruta/verdura diarias?", options: ["1 porción", "5 porciones (variedad de colores)", "2 porciones", "Ninguna"], correct: 1, rationale: "Asegura el aporte de fibra y vitaminas necesarias para la salud." },
+                    { q: "Recomendación de agua segura diaria:", options: ["1 litro", "8 vasos (2 litros)", "Solo cuando se tiene sed", "Solo en invierno"], correct: 1, rationale: "Mantener la hidratación es vital para el metabolismo basal." },
+                    { q: "¿Cuál es la función de las proteínas?", options: ["Dar energía inmediata", "Construcción y reparación de tejidos", "Transporte de grasa", "Solo dar sabor"], correct: 1, rationale: "Son los 'ladrillos' estructurales del cuerpo y defensas." },
+                    { q: "¿Qué es una Caloría Vacía?", options: ["Comida que no pesa", "Alimentos con energía pero sin nutrientes (ej. azúcar)", "Comida congelada", "Agua mineral"], correct: 1, rationale: "Aportan energía calórica pero carecen de vitaminas o minerales." },
+                    { q: "Para reducir sal se recomienda:", options: ["Usar azúcar", "Especias y condimentos (orégano, pimienta, ají)", "No cocinar carne", "Usar más aceite"], correct: 1, rationale: "Realzan el sabor naturalmente sin afectar la presión arterial." }
+                ]
+            },
+            {
+                id: 7,
+                title: "Gestión de Calidad",
+                icon: "ClipboardList",
+                summary: "BPM, POES, MIP y sistema HACCP para el control industrial de la inocuidad.",
+                questions: [
+                    { q: "¿Qué significa HACCP?", options: ["Higiene Alta Calidad", "Análisis de Peligros y Puntos Críticos de Control", "Herramienta de Almacén", "Manual de Personal"], correct: 1, rationale: "Sistema preventivo que identifica riesgos en cada paso del proceso." },
+                    { q: "¿Qué son los POES?", options: ["Planes Operativos", "Procedimientos Operativos Estandarizados de Saneamiento", "Protocolos de Orden", "Pruebas de Oxígeno"], correct: 1, rationale: "Documentan qué, cómo, cuándo y quién realiza la limpieza." },
+                    { q: "Limpieza de tanques de agua:", options: ["Cada mes", "Cada 6 meses", "Cada 2 años", "Nunca"], correct: 1, rationale: "Frecuencia mínima recomendada para asegurar agua potable." },
+                    { q: "¿Cuál es el objetivo del MIP?", options: ["Matar animales", "Minimizar peligros de plagas mediante recursos integrales", "Cerrar locales", "Solo poner trampas"], correct: 1, rationale: "Manejo Integrado de Plagas: prevención, higiene y control." },
+                    { q: "La auditoría de PRIMERA PARTE es:", options: ["La del cliente", "La auditoría interna realizada por la propia empresa", "La del SENASA", "Inspección municipal"], correct: 1, rationale: "Autocontrol esencial para la mejora continua del sistema." }
+                ]
+            }
+        ];
+
+        const SECTORES = ["HPS1", "HPS2", "BLANCHEADO", "ACOPIO", "LABORATORIO", "PRODUCTO ELABORADO", "ALÉRGENOS", "INSUMOS", "OFICINA"];
+
+        const PERSONNEL_MASTER_LIST = [
+            { dni: "12345678", nombre: "JUAN", apellido: "PEREZ", planta: "PLANTA 1" },
+            { dni: "87654321", nombre: "MARIA", apellido: "GARCIA", planta: "PLANTA 2" },
+            { dni: "11223344", nombre: "CARLOS", apellido: "LOPEZ", planta: "ACOPIO" },
+            { dni: "55667788", nombre: "ANA", apellido: "MARTINEZ", planta: "PLANTA 1" },
+            { dni: "99887766", nombre: "LUIS", apellido: "RODRIGUEZ", planta: "LABORATORIO" }
+        ];
+
+        const IconComponent = ({ name, ...props }) => {
+            const Icon = lucide[name] || lucide.HelpCircle;
+            return <Icon {...props} />;
+        };
+
+        const App = () => {
+            const [view, setView] = useState('register');
+            const [userData, setUserData] = useState({ nombre: '', apellido: '', dni: '', sector: '' });
+            const [activeModule, setActiveModule] = useState(null);
+            const [quizIndex, setQuizIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [transcript, setTranscript] = useState("Bienvenido al Centro de Capacitación. Por favor, coloque sus datos.");
+            const [showRationale, setShowRationale] = useState(null);
+            const [completedModules, setCompletedModules] = useState({});
+            const [allCertifications, setAllCertifications] = useState([]);
+            const [appUrl, setAppUrl] = useState(window.location.href);
+
+            const handleRegister = (e) => {
+                e.preventDefault();
+                if (userData.nombre && userData.dni && userData.sector) {
+                    setView('home');
+                    setTranscript(`¡Bienvenido! - coloque sus datos para poder ingresar a los cuestionarios`);
+                }
+            };
+
+            const navigateTo = (newView, module = null) => {
+                setView(newView);
+                if (module) {
+                    setActiveModule(module);
+                    setQuizIndex(0);
+                    setScore(0);
+                    setShowRationale(null);
+                    setTranscript(`Unidad ${module.id}: ${module.title}. Estudie el resumen técnico.`);
+                }
+            };
+
+            const handleAnswer = (idx) => {
+                if (showRationale !== null) return;
+                const isCorrect = idx === activeModule.questions[quizIndex].correct;
+                setShowRationale(idx);
+                if (isCorrect) {
+                    setScore(s => s + 1);
+                    setTranscript("Respuesta correcta validada.");
+                } else {
+                    setTranscript("Respuesta incorrecta. Revise la justificación.");
+                }
+            };
+
+            const nextQuestion = () => {
+                if (quizIndex < activeModule.questions.length - 1) {
+                    setQuizIndex(quizIndex + 1);
+                    setShowRationale(null);
+                } else {
+                    const finalScore = Math.round((score / 5) * 100);
+                    if (finalScore >= 80) {
+                        setCompletedModules(prev => ({...prev, [activeModule.id]: finalScore}));
+                    }
+                    setView('results');
+                }
+            };
+
+            const generatePDF = () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const finalScore = Math.round((score / 5) * 100);
+                const date = new Date().toLocaleDateString();
+
+                doc.setFillColor(30, 58, 138); 
+                doc.rect(0, 0, 210, 45, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(18);
+                doc.text("CENTRO DE CAPACITACIÓN", 105, 22, { align: "center" });
+                doc.setFontSize(10);
+                doc.text("Sistema de Gestión de Calidad e Inocuidad Alimentaria", 105, 30, { align: "center" });
+
+                doc.setTextColor(40, 40, 40);
+                doc.setFontSize(16);
+                doc.text("CERTIFICADO DE ACREDITACIÓN", 105, 70, { align: "center" });
+                doc.setFontSize(24);
+                doc.text(`${userData.nombre} ${userData.apellido}`.toUpperCase(), 105, 90, { align: "center" });
+                doc.setFontSize(12);
+                doc.text(`DNI: ${userData.dni}  |  Sector: ${userData.sector}`, 105, 100, { align: "center" });
+
+                doc.setDrawColor(200, 200, 200);
+                doc.line(40, 110, 170, 110);
+                doc.text("Ha aprobado satisfactoriamente el módulo técnico:", 105, 125, { align: "center" });
+                doc.setFontSize(16);
+                doc.text(activeModule.title.toUpperCase(), 105, 140, { align: "center" });
+                
+                doc.setFontSize(14);
+                if (finalScore >= 80) doc.setTextColor(21, 128, 61);
+                else doc.setTextColor(185, 28, 28);
+                doc.text(`Nota Obtenida: ${finalScore}%`, 105, 160, { align: "center" });
+
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(10);
+                doc.text("Responsable de SGCIA", 105, 240, { align: "center" });
+                doc.setFontSize(8);
+                doc.text(`Fecha: ${date}`, 105, 250, { align: "center" });
+
+                doc.save(`Certificado_${userData.dni}_M${activeModule.id}.pdf`);
+            };
+
+            const reports = useMemo(() => {
+                const capacitados = []; // Aquí iría el fetch de BD real
+                const faltantes = [];
+                PERSONNEL_MASTER_LIST.forEach(persona => {
+                    COURSE_DATA.forEach(modulo => {
+                        faltantes.push({ ...persona, moduloFaltante: modulo.title });
+                    });
+                });
+                return { capacitados, faltantes };
+            }, []);
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <nav className="bg-blue-950 text-white px-8 py-4 flex justify-between items-center sticky top-0 z-50 shadow-lg">
+                        <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigateTo('home')}>
+                            <div className="bg-white p-2 rounded-xl"><GraduationCap size={28} className="text-blue-900" /></div>
+                            <span className="text-xl font-black tracking-tighter uppercase">Centro de Capacitación</span>
+                        </div>
+                        {view !== 'register' && (
+                            <div className="flex items-center gap-6">
+                                <button onClick={() => setView('management')} className="flex items-center gap-2 text-blue-300 hover:text-white transition-colors font-bold text-sm bg-white/10 px-4 py-2 rounded-xl">
+                                    <BarChart3 size={18}/> Panel Gestión
+                                </button>
+                                <div className="h-10 w-px bg-white/20"></div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black text-blue-300 uppercase leading-none mb-1">{userData.sector}</p>
+                                    <p className="text-sm font-bold leading-none">{userData.nombre} {userData.apellido}</p>
+                                </div>
+                            </div>
+                        )}
+                    </nav>
+
+                    <main className="flex-1 max-w-6xl mx-auto p-4 md:p-12 w-full flex flex-col">
+                        {view === 'register' && (
+                            <div className="max-w-lg mx-auto bg-white p-12 rounded-[3.5rem] shadow-2xl animate-in my-auto border border-slate-100">
+                                <div className="text-center mb-12">
+                                    <div className="w-24 h-24 bg-blue-900 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl rotate-3">
+                                        <GraduationCap size={56} />
+                                    </div>
+                                    <h2 className="text-4xl font-black text-blue-950 tracking-tight mb-3 italic">¡BIENVENIDOS!</h2>
+                                    <p className="text-slate-500 font-medium leading-relaxed px-4 italic">coloque sus datos para poder ingresar a los cuestionarios</p>
+                                </div>
+                                <form onSubmit={handleRegister} className="space-y-5">
+                                    <div className="grid grid-cols-2 gap-5">
+                                        <input required className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-900 font-bold" value={userData.nombre} onChange={e => setUserData({...userData, nombre: e.target.value})} placeholder="Nombre" />
+                                        <input required className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-900 font-bold" value={userData.apellido} onChange={e => setUserData({...userData, apellido: e.target.value})} placeholder="Apellido" />
+                                    </div>
+                                    <input required type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-900 font-bold" value={userData.dni} onChange={e => setUserData({...userData, dni: e.target.value})} placeholder="DNI / Legajo" />
+                                    <select required className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold cursor-pointer" value={userData.sector} onChange={e => setUserData({...userData, sector: e.target.value})}>
+                                        <option value="">Seleccionar Sector...</option>
+                                        {SECTORES.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <button className="w-full bg-blue-900 text-white py-5 rounded-2xl font-black text-xl hover:bg-blue-950 transition-all shadow-xl mt-8 uppercase tracking-widest">INGRESAR AL SISTEMA</button>
+                                </form>
+                            </div>
+                        )}
+
+                        {view === 'home' && (
+                            <div className="animate-in">
+                                <h1 className="text-5xl font-black tracking-tighter leading-tight text-blue-950 mb-12">Mapa de Competencias</h1>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-12">
+                                    {COURSE_DATA.map(m => {
+                                        const score = completedModules[m.id];
+                                        const isDone = score !== undefined;
+                                        return (
+                                            <div key={m.id} onClick={() => navigateTo('module', m)} 
+                                                className={`p-8 rounded-[3rem] border-2 transition-all cursor-pointer group flex flex-col h-full relative overflow-hidden ${isDone ? 'bg-green-50/50 border-green-500 shadow-green-100 shadow-lg' : 'bg-white border-slate-100 hover:border-blue-700 hover:shadow-2xl'}`}>
+                                                <div className={`mb-6 w-16 h-16 rounded-3xl flex items-center justify-center transition-all duration-500 group-hover:rotate-6 ${isDone ? 'bg-green-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400 group-hover:bg-blue-800 group-hover:text-white shadow-sm'}`}>
+                                                    {isDone ? <CheckCircle2 size={36}/> : <IconComponent name={m.icon} size={36} />}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <span className={`text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest mb-6 inline-block ${isDone ? 'bg-green-200 text-green-800' : 'bg-slate-100 text-slate-500'}`}>
+                                                        {isDone ? `APROBADO • NOTA: ${score}%` : `Unidad Técnica ${m.id}`}
+                                                    </span>
+                                                    <h3 className={`font-black text-2xl mb-3 leading-tight ${isDone ? 'text-green-900' : 'text-blue-950 group-hover:text-blue-800 transition-colors'}`}>{m.title}</h3>
+                                                    <p className="text-slate-400 text-sm font-medium leading-relaxed line-clamp-2">{m.summary}</p>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'quiz' && activeModule && (
+                            <div className="max-w-3xl mx-auto animate-in w-full my-auto text-center">
+                                <div className="mb-10 flex justify-between items-end px-8">
+                                    <div className="text-left"><p className="text-xs font-black text-blue-600 uppercase tracking-widest mb-2">Unidad {activeModule.id}</p><p className="text-5xl font-black text-blue-950 tracking-tighter">Pregunta {quizIndex + 1}</p></div>
+                                    <p className="text-slate-300 font-black text-4xl mb-3 leading-none">{quizIndex + 1}/5</p>
+                                </div>
+                                <div className="bg-white p-12 md:p-20 rounded-[5rem] shadow-2xl border-2 border-slate-50 relative text-left">
+                                    <h2 className="text-4xl font-black mb-16 text-blue-950 leading-tight tracking-tight leading-snug">{activeModule.questions[quizIndex].q}</h2>
+                                    <div className="space-y-6">
+                                        {activeModule.questions[quizIndex].options.map((opt, i) => {
+                                            let style = "border-slate-100 hover:border-blue-700 hover:bg-slate-50 hover:translate-x-4";
+                                            let icon = null;
+                                            if (showRationale !== null) {
+                                                if (i === activeModule.questions[quizIndex].correct) {
+                                                    style = "border-green-500 bg-green-50 text-green-900 ring-[15px] ring-green-100/50 scale-[1.06] z-10 shadow-2xl shadow-green-100";
+                                                    icon = <CheckCircle2 className="text-green-600 shrink-0 ml-4 animate-in zoom-in h-10 w-10"/>;
+                                                } else if (i === showRationale) {
+                                                    style = "border-red-500 bg-red-50 text-red-900 ring-[15px] ring-red-100/50";
+                                                    icon = <XCircle className="text-red-600 shrink-0 ml-4 h-10 w-10"/>;
+                                                } else style = "opacity-20 border-slate-50 grayscale scale-95 pointer-events-none";
+                                            }
+                                            return (
+                                                <button key={i} disabled={showRationale !== null} onClick={() => handleAnswer(i)}
+                                                    className={`w-full text-left p-9 rounded-[3rem] border-2 transition-all duration-500 font-bold text-2xl flex justify-between items-center shadow-sm ${style}`}>
+                                                    <span className="pr-6 leading-tight">{opt}</span>{icon}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {showRationale !== null && (
+                                        <div className="mt-20 animate-in">
+                                            <div className="bg-blue-50 p-12 rounded-[4rem] border-2 border-blue-100 mb-12 shadow-inner">
+                                                <p className="text-[14px] font-black text-blue-900 uppercase tracking-[0.5em] mb-6 flex items-center gap-4 font-black"><ShieldCheck size={28} /> Base Técnica</p>
+                                                <p className="font-bold text-blue-950 text-3xl italic leading-snug">"{activeModule.questions[quizIndex].rationale}"</p>
+                                            </div>
+                                            <button onClick={nextQuestion} className="w-full bg-blue-900 text-white py-10 rounded-[3.5rem] font-black text-4xl shadow-2xl transition-all uppercase tracking-[0.2em]">SIGUIENTE</button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'results' && (
+                            <div className="max-w-2xl mx-auto text-center animate-in flex flex-col items-center my-auto w-full">
+                                <Trophy size={140} className="text-yellow-400 mb-16 animate-bounce" />
+                                <h2 className="text-8xl font-black tracking-tighter mb-4 text-blue-950">¡Cerrado!</h2>
+                                <div className="bg-white p-20 rounded-[6rem] shadow-2xl border-2 border-slate-50 w-full relative overflow-hidden">
+                                    <div className="text-[14rem] font-black text-blue-900 mb-2 leading-none">{Math.round((score/5)*100)}<span className="text-7xl text-blue-500">%</span></div>
+                                    <p className="font-black text-slate-400 uppercase tracking-[0.6em] text-sm mb-16">Acreditación Técnica</p>
+                                    <button onClick={generatePDF} className="w-full bg-green-600 hover:bg-green-700 text-white py-10 rounded-[3.5rem] font-black text-4xl flex items-center justify-center gap-8 shadow-2xl transition-all">
+                                        <Download size={48}/> CERTIFICADO PDF
+                                    </button>
+                                </div>
+                                <button onClick={() => setView('home')} className="font-black text-slate-400 uppercase tracking-[0.5em] hover:text-blue-900 transition-all flex items-center gap-6 mt-12 group text-lg">
+                                    <RefreshCw size={24} className="group-hover:rotate-180 transition-transform duration-1000"/> MENU PRINCIPAL
+                                </button>
+                            </div>
+                        )}
+
+                        {view === 'management' && (
+                            <div className="animate-in w-full">
+                                <div className="flex justify-between items-center mb-12">
+                                    <h2 className="text-4xl font-black text-blue-950 uppercase">Gestión Administrativa</h2>
+                                    <button onClick={() => setView('home')} className="bg-slate-200 hover:bg-slate-300 px-8 py-3 rounded-2xl font-black text-sm uppercase">Cerrar</button>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                    <div className="bg-white p-12 rounded-[4rem] shadow-xl border border-slate-100">
+                                        <h3 className="text-2xl font-black mb-8 flex items-center gap-4"><QrCode className="text-blue-600" /> Generador de Acceso</h3>
+                                        <p className="text-slate-500 mb-6 font-medium leading-relaxed">Coloque la URL de su sitio aquí para generar el QR de ingreso para la planta.</p>
+                                        <input className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl font-bold mb-8 outline-none focus:border-blue-600 transition-all" value={appUrl} onChange={(e) => setAppUrl(e.target.value)} />
+                                        <div className="flex flex-col items-center gap-6 bg-slate-50 p-10 rounded-[3rem] border-2 border-dashed border-slate-200">
+                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(appUrl)}`} alt="QR" className="w-64 h-64 bg-white p-4 shadow-lg rounded-2xl" />
+                                            <button onClick={() => window.print()} className="bg-blue-900 text-white px-10 py-4 rounded-2xl font-black flex items-center gap-3"><Printer size={20}/> IMPRIMIR QR</button>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-12 rounded-[4rem] shadow-xl border border-slate-100">
+                                        <h3 className="text-2xl font-black mb-8 flex items-center gap-4"><FileDown className="text-blue-600" /> Reportes de Auditoría</h3>
+                                        <p className="text-slate-500 mb-10 font-medium">Genere un informe detallado con el personal pendiente de capacitación por planta.</p>
+                                        <div className="space-y-6">
+                                            <button onClick={() => setTranscript("Esta función requiere la implementación de un backend para leer toda la base de datos de empleados.")} className="w-full p-8 bg-blue-50 border-2 border-blue-100 rounded-[2.5rem] flex flex-col items-start gap-2 group hover:bg-blue-600 transition-all">
+                                                <p className="font-black text-xl group-hover:text-white transition-colors">Informe de Pendientes por Planta</p>
+                                                <p className="text-slate-400 font-medium text-sm group-hover:text-blue-100 transition-colors italic">PDF consolidado con nombres y temas faltantes.</p>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    <footer className="bg-white border-t-2 border-slate-100 p-8 sticky bottom-0 z-50 shadow-2xl">
+                        <div className="max-w-6xl mx-auto flex items-center gap-10">
+                            <div className="relative shrink-0">
+                                <div className="w-20 h-20 bg-blue-900 rounded-[2.5rem] flex items-center justify-center shadow-2xl text-white">
+                                    <GraduationCap size={44} />
+                                </div>
+                                <div className="absolute -top-1 -right-1 h-7 w-7 bg-green-500 border-[6px] border-white rounded-full animate-pulse"></div>
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-[12px] font-black text-blue-900 uppercase tracking-[0.5em] mb-2 leading-none">Asistente de Capacitación</p>
+                                <div className="bg-slate-100 p-6 rounded-[2rem] border-2 border-white shadow-inner">
+                                    <p className="italic font-bold text-slate-800 text-2xl tracking-tight leading-snug">"{transcript}"</p>
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
